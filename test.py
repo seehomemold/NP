@@ -4,6 +4,7 @@ import sys
 import threading
 from sqlite3 import Error
 
+
 def startTcpServer(ip,port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -29,6 +30,12 @@ def ServeClient(sock,addr):
     #   part of register
         if(msgArr[0]== "register"):
             if(len(msgArr)==4):
+                cursor = cur.execute('SELECT * FROM USER WHERE Name = ?;',(msgArr[1],))
+                cursor = cursor.fetchone()
+                if(cursor != None):
+                    msg = "User name is already use.\r\n"
+                    sock.send(msg.encode('utf-8'))
+                    continue;
                 try:
                     cursor = cur.execute('INSERT INTO user("Name","Email","Password")VALUES(?,?,?);',(msgArr[1],msgArr[2],msgArr[3]))
                     conn.commit()
@@ -36,7 +43,7 @@ def ServeClient(sock,addr):
                     msg = "Register successfully. \r\n"
                     sock.send(msg.encode('utf-8'))
                 except Error:
-                    msg = "User name is already use.\r\n"
+                    msg = "Register Error.\r\n"
                     sock.send(msg.encode('utf-8'))
             else:
                 msg = "Usage: register <username> <email> <passsword>\r\n"
