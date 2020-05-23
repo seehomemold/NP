@@ -210,7 +210,7 @@ def ServeClient(sock,addr):
                 msg = "----\r\n"
                 sock.send(msg.encode('utf-8'))
                 if(cursor[6]!=None):
-                    msg = cursor[6]
+                    msg = cursor[6] + "\r\n"
                     sock.send(msg.encode('utf-8'))
             else:
                 msg = "Post does not exit.\r\n"
@@ -275,18 +275,25 @@ def ServeClient(sock,addr):
                 msg = "update-post <post-id> --title/content <new>.\r\n"
                 sock.send(msg.encode('utf-8'))
         #   part of comment post
-        elif(len(msgArr) > 3 and msgArr[0]== "comment" ):
+        elif(len(msgArr) > 2 and msgArr[0]== "comment" ):
             if(isLogin == 1):
                 cursor = cur.execute('select * from post where ID = ? ;',(msgArr[1],)).fetchone()
                 if(cursor==None):
                     msg = "Post does not exist.\r\n"
                     sock.send(msg.encode('utf-8'))
-                else:
-                    comment = userName+ " :" + recvMsg.split(msgArr[1],1)[1] + "\r\n"
+                elif(cursor[6] != None ):
+                    comment = cursor[6] + userName+ " :" + recvMsg.split(msgArr[1],1)[1]
                     cursor = cur.execute('update post set Comment = ? where ID = ? ;',(comment,msgArr[1]))
                     conn.commit()
                     msg = "Comment successfully.\r\n"
                     sock.send(msg.encode('utf-8'))
+                else:
+                    comment = userName+ " :" + recvMsg.split(msgArr[1],1)[1]
+                    cursor = cur.execute('update post set Comment = ? where ID = ? ;',(comment,msgArr[1]))
+                    conn.commit()
+                    msg = "Comment successfully.\r\n"
+                    sock.send(msg.encode('utf-8'))
+
             else:
                 msg = "Please login first.\r\n"
                 sock.send(msg.encode('utf-8'))
