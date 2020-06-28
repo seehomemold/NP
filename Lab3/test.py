@@ -146,36 +146,48 @@ def ServeClient(sock,addr):
                     msg = msg+ str(row[0])
                     msg = msg+ "\t"+row[1]+"\t"+row[2]+"\r\n"
                 SEND(CMD = msg)
-            if(len(msgArr) == 2 and msgArr[1][0]=='#' and msgArr[1][1]=='#'):
+            elif(len(msgArr) == 2 and msgArr[1][0]=='#' and msgArr[1][1]=='#'):
                 msgKey =  msgArr[1].replace('#','')
                 msg ="Index\tName\tModerator\r\n" 
                 for row in cur.execute('SELECT * FROM board WHERE Name LIKE ?;',("%"+msgKey+"%",)):
                     msg = msg+ str(row[0])
                     msg = msg+"\t"+row[1]+"\t"+row[2]+"\r\n"
                 SEND(CMD = msg)
+            else:
+                msg = "Command error. \r\n"
+                SEND(CMD = msg)
     #   part of create post
         elif(len(msgArr) > 5 and msgArr[0]== "create-post" ):
             if(msgArr[2]== "--title" and recvMsg.rfind(" --content ")!= -1):
                 msgTC = recvMsg.split("--title ",1)[1].split(" --content ",1)
                 if(isLogin == 1):
-                    try:
-                        sql = 'insert into post("Title","Author","Date","Content","Board","BucketName")values(?,?,?,?,?,?);'
-                        now = datetime.datetime.now()
-                        dateStr = str(now.month) + "/" + str(now.day)
-                        cursor = cur.execute(sql,(msgTC[0],userName,dateStr,msgTC[1],msgArr[1],bucketName,))
-                        conn.commit()
-                        print bucketName
-                        Last_post = cur.execute('select * from post where title = ?',(msgTC[0],)).fetchall()
-                        PostID = Last_post[-1][0] ## Last post's first element
-                        msg = "mark " + str(PostID) + " Create post successfully.\r\n" 
-                        SEND(CMD = msg)
-                    except Error as e:
-                        msg ="Board does not exist.\r\n" 
-                        SEND(CMD = msg)
-                        print(e)
+                    cursor = cur.execute('SELECT * FROM board WHERE Name = ?', (msgArr[1],)).fetchone()
+                    if cursor == None:
+                        msg = "Board does not exist.\r\n"
+                        SEND(CMD=msg)
+                    else:
+                        try:
+                            sql = 'insert into post("Title","Author","Date","Content","Board","BucketName")values(?,?,?,?,?,?);'
+                            now = datetime.datetime.now()
+                            dateStr = str(now.month) + "/" + str(now.day)
+                            cursor = cur.execute(sql,(msgTC[0],userName,dateStr,msgTC[1],msgArr[1],bucketName,))
+                            conn.commit()
+                            print bucketName
+                            print msgArr[1]
+                            Last_post = cur.execute('select * from post where title = ?',(msgTC[0],)).fetchall()
+                            PostID = Last_post[-1][0] ## Last post's first element
+                            msg = "mark " + str(PostID) + " Create post successfully.\r\n" 
+                            SEND(CMD = msg)
+                        except Error as e:
+                            msg ="Board does not exist.\r\n" 
+                            SEND(CMD = msg)
+                            print(e)
                 else:
                     msg = "Please login first.\r\n"
                     SEND(CMD = msg)
+            else:
+                msg = "Command Error!\r\n"
+                SEND(CMD =msg)
     #   part of list-post
         elif(msgArr[0]== "list-post" ):
             if(len(msgArr) == 2):
@@ -193,10 +205,10 @@ def ServeClient(sock,addr):
                 msgKey =  msgArr[2].replace('#','')
                 cursor = cur.execute('select * from post where Board = ? AND Title LIKE ?;',(msgArr[1],"%"+msgKey+"%")).fetchone()
                 if(cursor != None):
-                    msg = "{:^7} {:^20} {:^20} {:^9}\r\n\r\n".format("ID","Title","Author","Datey")
-                    cursor = cur.execute('select * from post where Board = ? ;',(msgArr[1],))
-                    for row in cursor:
-                        msg = msg+"{:>7} {:^20} {:^20} {:^9}\r\n\r\n".format(str(row[0]),row[1],row[2],row[3])
+                    msg = "{:^7} {:^20} {:^20} {:^9}\r\n\r\n".format("ID","Title","Author","Date")
+                    cursor = cur.execute('select * from post where Board = ? AND Title LIKE ?;',(msgArr[1],"%"+msgKey+"%"))
+                    for row2 in cursor:
+                        msg = msg+"{:>7} {:^20} {:^20} {:^9}\r\n\r\n".format(str(row2[0]),row2[1],row2[2],row2[3])
                     SEND(CMD = msg)
                 else:
                     msg = "Board does not exit.\r\n"
@@ -291,14 +303,14 @@ def ServeClient(sock,addr):
                     cursor = cur.execute('update post set Comment = ? where ID = ? ;',(comment,msgArr[1]))
                     conn.commit()
                     cursor = cur.execute('select * from post where ID = ? ;',(msgArr[1],)).fetchone()
-                    msg = "ComSuc "+ cursor[7]+ " Comment successfully.\r\n"
+                    msg = "ComSuc "+ cursor[7]+ " " + userName + " Comment successfully.\r\n"
                     SEND(CMD = msg)
                 else:
                     comment = userName+ " :" + recvMsg.split(msgArr[1],1)[1]
                     cursor = cur.execute('update post set Comment = ? where ID = ? ;',(comment,msgArr[1]))
                     conn.commit()
                     cursor = cur.execute('select * from post where ID = ? ;',(msgArr[1],)).fetchone()
-                    msg = "ComSuc "+ cursor[7]+ " Comment successfully.\r\n"
+                    msg = "ComSuc "+ cursor[7]+" "+ userName + " Comment successfully.\r\n"
                     SEND(CMD = msg)
 
             else:
@@ -309,7 +321,7 @@ def ServeClient(sock,addr):
             msgArr = recvMsg.split()
             if(isLogin == 1):
                 cursor = cur.execute('select * from user where Name = ? ;',(msgArr[1],)).fetchone()
-                recvBucketName = cursor[4]
+                print cursor
                 if(cursor==None):
                     msg = msgArr[1] +" does not exist.\r\n"
                     SEND(CMD = msg)
@@ -318,6 +330,7 @@ def ServeClient(sock,addr):
                     print msg
                     SEND(CMD = msg)
                 else:
+                    recvBucketName = cursor[4]
                     sql = 'insert into mail("Subject","Sender","Receiver","DT")values(?,?,?,?);'
                     now = datetime.datetime.now()
                     dateStr = str(now.month) + "/" + str(now.day)
@@ -388,7 +401,7 @@ def ServeClient(sock,addr):
                     else:
                         msg = "delMail# "
                         index = mailNum -1
-                        msg = msg+str(cursor[index][0]) + "# #" + "Mail deleted."
+                        msg = msg+str(cursor[index][0]) + "# #" + "Mail deleted.\r\n"
                         cursordel = cur.execute('delete from mail where ID = ? ;',(cursor[index][0],))
                         conn.commit()
                         print msg

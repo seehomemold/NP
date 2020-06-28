@@ -43,7 +43,7 @@ def MKDIR():
     if not os.path.exists(Pmail):
         os.mkdir(Pmail)
 
-Host = "54.236.195.176"
+Host = "18.204.221.141"
 Port = 3110
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -89,7 +89,8 @@ while True:
         if(get.startswith("mark ")):
             get = get.replace("mark ","",1)
             postID = get.split()[0]
-            get = get.replace("postID ","",1)
+            get = get.replace(postID+" ","",1)
+            print get
             msgTC = cmd.split("--title ",1)[1].split(" --content ",1)
             ContentArr =  msgTC[1].replace("<br>","\r\n")
             Content = ""
@@ -117,7 +118,7 @@ while True:
             objContent = target_obj1.get()["Body"].read().decode()
             print(objContent)
             writeLine = "-----"
-            print(writeLine)
+            print writeLine
             target_obj2 = readBucket.Object("C{}".format(postID))
             objComment = target_obj2.get()["Body"].read().decode()
             print(objComment)
@@ -148,9 +149,9 @@ while True:
             get = get.replace(bucketName+" ","",1)
             postID = cmd.split()[1]
             readBucket = s3.Bucket(bucketName)
-            os.remove(".data/post/P{}".format(postID))
+            if os.path.isfile(".data/post/P{}"):
+                os.remove(".data/post/P{}".format(postID))
             target_obj1 = readBucket.Object("P{}".format(postID))
-            target_obj1.delete()
             msgTitle = cmd.split("--content ",1)[1]
             ContentArr = msgTitle.replace("<br>","\r\n")
             Content = ""
@@ -170,20 +171,28 @@ while True:
             get = get.replace("ComSuc ","",1)
             bucketName = get.split()[0]
             get = get.replace(bucketName+" ","",1)
+            whoComment = get.split()[0]
+            get = get.replace(whoComment+" ","",1)
+
+
             postID = cmd.split()[1]
             readBucket = s3.Bucket(bucketName)
             target_obj1 = readBucket.Object("C{}".format(postID))
-            target_obj1.delete()
+            objComment = target_obj1.get()["Body"].read().decode()
+            objComment = objComment + whoComment + "\t: "
 
             msgComment = cmd.replace("comment "+postID+" ","",1)
             ContentArr = msgComment.replace("<br>","\r\n")
             Content = ""
             for iter_content in ContentArr:
                 Content = Content + iter_content
+            if os.path.isfile("data./comment/C{}".format(postID)):
+                os.remove(".data/comment/C{}".format(postID))
             fp = open(".data/comment/C{}".format(postID),"w")
+            fp.write(objComment)
             fp.write(Content)
             fp.close()
-            targetBucket.upload_file(".data/comment/C{}".format(postID), "C{}".format(postID))
+            readBucket.upload_file(".data/comment/C{}".format(postID), "C{}".format(postID))
             print get
         else:
             print get
@@ -192,6 +201,7 @@ while True:
         if(get.startswith("MailSuc# ")):
             get = get.replace("MailSuc# ","",1)
             bucketName = get.split()[0]
+            print bucketName
             MID = get.split()[1]
             get = get.replace(bucketName+" ","",1)
             get = get.replace(MID+" ","",1)
