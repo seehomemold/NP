@@ -201,7 +201,6 @@ while True:
         if(get.startswith("MailSuc# ")):
             get = get.replace("MailSuc# ","",1)
             bucketName = get.split()[0]
-            print bucketName
             MID = get.split()[1]
             get = get.replace(bucketName+" ","",1)
             get = get.replace(MID+" ","",1)
